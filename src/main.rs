@@ -1,12 +1,21 @@
-use lambda_runtime::{run, service_fn, tracing, Error};
+use lambda_runtime::{tracing, Error};
 
 mod event_handler;
-use event_handler::function_handler;
-
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     tracing::init_default_subscriber();
+    let _ = dotenvy::dotenv();
 
-    run(service_fn(function_handler)).await
+    #[cfg(feature = "local")]
+    {
+        event_handler::fetch_and_notify().await?;
+        return Ok(());
+    }
+
+    #[cfg(not(feature = "local"))]
+    {
+        use lambda_runtime::{run, service_fn};
+        run(service_fn(event_handler::function_handler)).await
+    }
 }
