@@ -1,0 +1,7 @@
+aws_region          = "eu-west-3"
+function_name       = "weather-lambda"
+discord_webhook_url = "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+schedule_expression = "cron(0 7 * * ? *)"
+lambda_timeout      = 30
+lambda_memory_size  = 128
+log_retention_days  = 14
