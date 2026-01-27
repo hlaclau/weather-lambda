@@ -1,6 +1,4 @@
 [tools]
 rust = "1.85"
 terraform = "1.10"
-node = "22"
-"npm:serverless" = "4"
 "cargo:cargo-lambda" = "latest"
