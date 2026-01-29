@@ -46,3 +46,5 @@ jobs:
 
       - name: Deploy
         run: make deploy
+        env:
+          TF_VAR_discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
