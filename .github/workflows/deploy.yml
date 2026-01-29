@@ -10,56 +10,63 @@ env:
   AWS_REGION: eu-west-3
 
 jobs:
-  test:
+  format:
+    name: Check formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: cargo fmt --check
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -- -D warnings
 
-      - name: Check formatting
-        run: cargo fmt --check
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
 
-      - name: Lint
-        run: make lint
+  build:
+    name: Build Lambda
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: pip install cargo-lambda
+      - run: cargo lambda build --release --arm64 --output-format zip
 
-      - name: Test
-        run: make test
-
-      - name: Install cargo-lambda
-        run: pip install cargo-lambda
-
-      - name: Build Lambda
-        run: cargo lambda build --release --arm64 --output-format zip
-
-      - name: Install terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform init
-        run: terraform -chdir=terraform init -backend=false
-
-      - name: Terraform validate
-        run: terraform -chdir=terraform validate
+  validate-terraform:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform -chdir=terraform init -backend=false
+      - run: terraform -chdir=terraform validate
 
   deploy:
-    needs: test
+    name: Deploy
+    needs: [format, lint, test, build, validate-terraform]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-lambda
         run: pip install cargo-lambda
 
-      - name: Install terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -71,7 +78,7 @@ jobs:
       - name: Build Lambda
         run: cargo lambda build --release --arm64 --output-format zip
 
-      - name: Deploy
+      - name: Terraform apply
         run: terraform -chdir=terraform apply -auto-approve
         env:
           TF_VAR_discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
