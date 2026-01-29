@@ -10,7 +10,11 @@ pub struct WeatherService {
 }
 
 impl WeatherService {
-    pub fn new(weather_client: WeatherApiClient, notifier: DiscordNotifier, location: String) -> Self {
+    pub fn new(
+        weather_client: WeatherApiClient,
+        notifier: DiscordNotifier,
+        location: String,
+    ) -> Self {
         Self {
             weather_client,
             notifier,

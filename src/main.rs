@@ -44,7 +44,8 @@ async fn main() -> Result<(), Error> {
 }
 
 fn build_service() -> Result<WeatherService, Error> {
-    let location = std::env::var("WEATHER_LOCATION").unwrap_or_else(|_| DEFAULT_LOCATION.to_string());
+    let location =
+        std::env::var("WEATHER_LOCATION").unwrap_or_else(|_| DEFAULT_LOCATION.to_string());
     let notifier = DiscordNotifier::from_env()?;
     let weather_client = WeatherApiClient::new();
 
