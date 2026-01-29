@@ -10,41 +10,72 @@ env:
   AWS_REGION: eu-west-3
 
 jobs:
-  test:
+  format:
+    name: Check formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - run: cargo fmt --check
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -- -D warnings
 
-      - name: Check formatting
-        run: cargo fmt --check
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
 
-      - name: Lint
-        run: make lint
+  build:
+    name: Build Lambda
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: pip install cargo-lambda
+      - run: cargo lambda build --release --arm64 --output-format zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lambda-zip
+          path: target/lambda/weather-lambda/bootstrap.zip
 
-      - name: Test
-        run: make test
+  validate-terraform:
+    name: Validate Terraform
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip
+          path: target/lambda/weather-lambda
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform -chdir=terraform init -backend=false
+      - run: terraform -chdir=terraform validate
 
   deploy:
-    needs: test
+    name: Deploy
+    needs: [format, lint, test, build, validate-terraform]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip
+          path: target/lambda/weather-lambda
 
-      - name: Install cargo-lambda
-        run: pip install cargo-lambda
+      - uses: hashicorp/setup-terraform@v3
 
-      - name: Install terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -53,7 +84,7 @@ jobs:
       - name: Terraform init
         run: terraform -chdir=terraform init
 
-      - name: Deploy
-        run: cargo lambda build --release --arm64 && terraform -chdir=terraform apply -auto-approve
+      - name: Terraform apply
+        run: terraform -chdir=terraform apply -auto-approve
         env:
           TF_VAR_discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
