@@ -41,12 +41,21 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: pip install cargo-lambda
       - run: cargo lambda build --release --arm64 --output-format zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lambda-zip
+          path: target/lambda/weather-lambda/bootstrap.zip
 
   validate-terraform:
     name: Validate Terraform
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip
+          path: target/lambda/weather-lambda
       - uses: hashicorp/setup-terraform@v3
       - run: terraform -chdir=terraform init -backend=false
       - run: terraform -chdir=terraform validate
@@ -59,10 +68,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Install cargo-lambda
-        run: pip install cargo-lambda
+      - uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip
+          path: target/lambda/weather-lambda
 
       - uses: hashicorp/setup-terraform@v3
 
@@ -74,9 +83,6 @@ jobs:
 
       - name: Terraform init
         run: terraform -chdir=terraform init
-
-      - name: Build Lambda
-        run: cargo lambda build --release --arm64 --output-format zip
 
       - name: Terraform apply
         run: terraform -chdir=terraform apply -auto-approve
