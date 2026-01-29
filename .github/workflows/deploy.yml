@@ -15,8 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install mise
-        uses: jdx/mise-action@v2
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Check formatting
         run: cargo fmt --check
@@ -34,8 +34,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install mise
-        uses: jdx/mise-action@v2
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-lambda
+        run: pip install cargo-lambda
+
+      - name: Install terraform
+        uses: hashicorp/setup-terraform@v3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -44,7 +50,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Terraform init
+        run: terraform -chdir=terraform init
+
       - name: Deploy
-        run: make deploy
+        run: cargo lambda build --release --arm64 && terraform -chdir=terraform apply -auto-approve
         env:
           TF_VAR_discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
