@@ -1,14 +1,35 @@
-name: Deploy
+name: CI/CD
 
 on:
   push:
+    branches: [master]
+  pull_request:
     branches: [master]
 
 env:
   AWS_REGION: eu-west-3
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
   deploy:
+    needs: test
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
