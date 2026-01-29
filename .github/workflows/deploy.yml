@@ -27,6 +27,21 @@ jobs:
       - name: Test
         run: make test
 
+      - name: Install cargo-lambda
+        run: pip install cargo-lambda
+
+      - name: Build Lambda
+        run: cargo lambda build --release --arm64 --output-format zip
+
+      - name: Install terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform -chdir=terraform validate
+
   deploy:
     needs: test
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
@@ -53,7 +68,10 @@ jobs:
       - name: Terraform init
         run: terraform -chdir=terraform init
 
+      - name: Build Lambda
+        run: cargo lambda build --release --arm64 --output-format zip
+
       - name: Deploy
-        run: cargo lambda build --release --arm64 && terraform -chdir=terraform apply -auto-approve
+        run: terraform -chdir=terraform apply -auto-approve
         env:
           TF_VAR_discord_webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}

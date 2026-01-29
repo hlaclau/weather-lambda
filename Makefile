@@ -1,7 +1,7 @@
 .PHONY: build init plan deploy destroy test fmt lint check
 
 build:
-	mise exec -- cargo lambda build --release --arm64
+	mise exec -- cargo lambda build --release --arm64 --output-format zip
 
 test:
 	cargo test
