@@ -18,14 +18,14 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v2
 
-      - name: Run tests
-        run: cargo test
-
       - name: Check formatting
         run: cargo fmt --check
 
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
 
   deploy:
     needs: test
