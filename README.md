@@ -1,52 +1,44 @@
-# Introduction
+# weather-lambda
 
-weather-lambda is a Rust project that implements an AWS Lambda function in Rust.
+A small Rust Lambda that sends the daily weather forecast to Discord every morning.
 
-## Prerequisites
+## What it does
 
-- [Rust](https://www.rust-lang.org/tools/install)
-- [Cargo Lambda](https://www.cargo-lambda.info/guide/installation.html)
+Fetches weather data from [wttr.in](https://wttr.in) and posts a formatted summary to a Discord channel via webhook. Runs on a schedule using AWS EventBridge.
 
-## Building
+## Setup
 
-To build the project for production, run `cargo lambda build --release`. Remove the `--release` flag to build for development.
+1. Create a Discord webhook in your server (Server Settings → Integrations → Webhooks)
 
-Read more about building your lambda function in [the Cargo Lambda documentation](https://www.cargo-lambda.info/commands/build.html).
+2. Copy `.env.example` to `.env` and add your webhook URL:
+   ```
+   DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+   ```
 
-## Testing
+3. Deploy:
+   ```bash
+   make deploy
+   ```
 
-You can run regular Rust unit tests with `cargo test`.
-
-If you want to run integration tests locally, you can use the `cargo lambda watch` and `cargo lambda invoke` commands to do it.
-
-First, run `cargo lambda watch` to start a local server. When you make changes to the code, the server will automatically restart.
-
-Second, you'll need a way to pass the event data to the lambda function.
-
-You can use the existent [event payloads](https://github.com/awslabs/aws-lambda-rust-runtime/tree/main/lambda-events/src/fixtures) in the Rust Runtime repository if your lambda function is using one of the supported event types.
-
-You can use those examples directly with the `--data-example` flag, where the value is the name of the file in the [lambda-events](https://github.com/awslabs/aws-lambda-rust-runtime/tree/main/lambda-events/src/fixtures) repository without the `example_` prefix and the `.json` extension.
+## Local testing
 
 ```bash
-cargo lambda invoke --data-example apigw-request
+cargo run --features local
 ```
 
-For generic events, where you define the event data structure, you can create a JSON file with the data you want to test with. For example:
+## Configuration
 
-```json
-{
-    "command": "test"
-}
-```
+Edit `terraform/terraform.tfvars`:
 
-Then, run `cargo lambda invoke --data-file ./data.json` to invoke the function with the data in `data.json`.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `discord_webhook_url` | Your Discord webhook | - |
+| `schedule_expression` | When to run | `cron(0 7 * * ? *)` (7am daily) |
+| `schedule_timezone` | Timezone | `Europe/Paris` |
 
+## Requirements
 
-Read more about running the local server in [the Cargo Lambda documentation for the `watch` command](https://www.cargo-lambda.info/commands/watch.html).
-Read more about invoking the function in [the Cargo Lambda documentation for the `invoke` command](https://www.cargo-lambda.info/commands/invoke.html).
-
-## Deploying
-
-To deploy the project, run `cargo lambda deploy`. This will create an IAM role and a Lambda function in your AWS account.
-
-Read more about deploying your lambda function in [the Cargo Lambda documentation](https://www.cargo-lambda.info/commands/deploy.html).
+- Rust
+- [cargo-lambda](https://www.cargo-lambda.info/)
+- Terraform
+- AWS credentials configured
