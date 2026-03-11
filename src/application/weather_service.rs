@@ -25,7 +25,17 @@ impl WeatherService {
     pub async fn fetch_and_notify(&self) -> Result<(), ServiceError> {
         tracing::info!("Fetching weather for {}", self.location);
 
-        let report = self.weather_client.fetch(&self.location).await?;
+        let report = match self.weather_client.fetch(&self.location).await {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Failed to fetch weather: {}", e);
+                let _ = self
+                    .notifier
+                    .send(&format!(":warning: Weather fetch failed: {}", e))
+                    .await;
+                return Err(e.into());
+            }
+        };
         let message = format_weather_report(&report);
 
         tracing::debug!("Formatted message:\n{}", message);
